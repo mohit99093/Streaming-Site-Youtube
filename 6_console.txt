@@ -1,0 +1,242 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+EXEC SQL BEGIN DECLARE SECTION;
+
+/*exeUpdate variables*/
+char upduname[30];
+char updpawd[30];
+bool updis_premium;
+int  updx; 
+/*exedelete variables*/
+char deluname[30];
+
+/*exeINSERT variables*/
+char uname[30];
+char pawd[30];
+char dat[30];
+char country[11];
+bool is_premium;
+
+/*query1 variables*/
+char q1date[30];
+char q1chname[30];
+int  q1num;
+
+/*query2 variables*/
+char q2year[5];
+int q2y;
+int q2videoid;
+int q2num;
+
+/*query3 variables*/
+char q3chname[30];
+int q3num;
+
+/*query4 variable*/
+char q4uname[30];
+char q4chname[30];
+
+EXEC SQL END DECLARE SECTION;
+
+void query4()
+{
+	printf("Enter Channel Name :- ");
+	scanf("%s", q4chname);
+	EXEC SQL DECLARE curs4 CURSOR FOR select  q."User_name" from (select * from (select * from "Online_streaming_site"."Watches" natural join 
+"Online_streaming_site"."Video") as b where b."channel_name" = 'NationalGeographic') as q  
+
+except
+(
+select d."User_name" from (select r."User_name" , s."Video_Id" from (select q."Video_Id" , q."User_name"	from (select * from (select * from "Online_streaming_site"."Watches" natural join 
+"Online_streaming_site"."Video") as b where b."channel_name" = 'NationalGeographic') as q  ) as r cross join  
+ (select "Video_Id"  from "Online_streaming_site"."Channel" natural join 
+"Online_streaming_site"."Video" where  channel_name = 'NationalGeographic'  ) as s 
+
+except (select   q."User_name" ,q."Video_Id"	from (select * from (select * from "Online_streaming_site"."Watches" natural join 
+"Online_streaming_site"."Video") as b where b."channel_name" = 'NationalGeographic') as q) ) as d
+	);
+	EXEC SQL OPEN curs4;
+	EXEC SQL FETCH curs4 INTO :q4uname;
+	while(sqlca.sqlcode == 0)
+	{
+		printf("User Name = %s\n",q4uname);
+		EXEC SQL FETCH curs4 INTO :q4uname;		
+	}
+	EXEC SQL CLOSE curs4;
+}
+
+void query3()
+{
+	EXEC SQL DECLARE curs3 CURSOR FOR select count(b."Video_Id") as q ,b."channel_name" from (select * from "Online_streaming_site"."Like" natural join 
+"Online_streaming_site"."Video")  as b group by b."channel_name"
+order by q desc limit 1;
+
+	EXEC SQL OPEN curs3;
+	EXEC SQL FETCH curs3 INTO :q3num,:q3chname;
+	while(sqlca.sqlcode == 0)
+	{
+		printf("Channel Name = %s , Likes = %d\n",q3chname,q3num);
+		EXEC SQL FETCH curs3 INTO :q3chname,:q3num;
+	}
+	EXEC SQL CLOSE curs3;
+}
+
+void query2()
+{
+	printf("Enter Year :- ");
+	scanf("%s",q2year);
+	EXEC SQL DECLARE curs2 CURSOR FOR (select x1."y",x1."Video_Id",x1."num" from (select extract('year' from "Date") as y,wa."Video_Id",sum(wa."No_Of_Times_Watch") as num from "Online_streaming_site"."Watches" as wa group by y,wa."Video_Id") as x1 join
+(select x2."y",max(num) as ma from (select extract('year' from "Date") as y,wa."Video_Id",sum(wa."No_Of_Times_Watch") as num from 
+"Online_streaming_site"."Watches" as wa group by y,wa."Video_Id") as x2 group by x2."y") as x3 on x1."num" = x3."ma" where x1."y" = :q2year);
+
+	EXEC SQL OPEN curs2;
+	EXEC SQL FETCH curs2 INTO :q2y,:q2videoid,:q2num;
+	while(sqlca.sqlcode == 0)
+	{
+		printf("Year = %d , Video_Id = %d , Number Of Times Viewed = %d\n",q2y,q2videoid,q2num);
+		EXEC SQL FETCH curs2 INTO :q2y,:q2videoid,:q2num;
+	}
+	EXEC SQL CLOSE curs2;
+}
+
+void query1()
+{
+	printf("Enter the date :- ");
+	scanf("%s",q1date);
+	EXEC SQL DECLARE curs1 CURSOR FOR select b."channel_name",count(b."Video_Id") as c from "Online_streaming_site"."Video"  as b where b."Publish_Date" > :q1date group by channel_name order by c desc limit 1;
+	
+	EXEC SQL OPEN curs1;
+	EXEC SQL FETCH curs1 INTO :q1chname,:q1num;
+	while(sqlca.sqlcode == 0)
+	{
+		printf("Channel Name = %s\n",q1chname);
+		printf("Video's count = %d\n\n",q1num);
+		EXEC SQL FETCH curs1 INTO :q1chname , :q1num;
+	}
+	EXEC SQL CLOSE curs1;		
+}
+
+void exeUpdate()
+{
+	printf("Enter User Name :- ");
+	scanf("%s",upduname);
+	printf("Enter New PASSWORD :- ");
+	scanf("%s",updpawd);
+	printf("IS User premium");
+	scanf("%d",&updx);
+	updis_premium = false;
+	if(updx != 0)
+		updis_premium = 1;
+
+	EXEC SQL UPDATE "Online_streaming_site"."User_details" set "Password" = :updpawd,"Is_Premium" = :updis_premium where "User_Name" = :upduname;
+	EXEC SQL COMMIT;
+	if(sqlca.sqlcode == 0)
+	{
+		printf("Update successful\n");
+	}	
+	else
+	{
+		EXEC SQL WHENEVER SQLERROR SQLPRINT;
+	}
+}
+void exeDelete()
+{
+	printf("Enter User Name :- ");
+	scanf("%s",deluname);
+	EXEC SQL DELETE FROM "Online_streaming_site"."User_details" where "User_Name" = :deluname;
+	EXEC SQL COMMIT;
+	if(sqlca.sqlcode == 0)
+		printf("Delete successful\n");
+	else
+	{
+		EXEC SQL WHENEVER SQLERROR SQLPRINT;
+	}
+}
+
+
+void exeInsert()
+{
+	printf("Enter User Name :- ");
+	scanf("%s",uname);
+	printf("Enter Password :- ");
+	scanf("%s", pawd);
+	printf("Enter Date :- ");
+	scanf("%s", dat);
+	printf("Enter Country :- ");
+	scanf("%s",country);
+	is_premium = false;
+	EXEC SQL INSERT INTO "Online_streaming_site"."User_details" VALUES(:uname,:pawd,:dat,:country,:is_premium);
+	EXEC SQL COMMIT;
+	if(sqlca.sqlcode == 0)
+		printf("Insert successful\n");
+	else
+	{
+		EXEC SQL WHENEVER SQLERROR SQLPRINT;
+	}
+}
+
+
+int main ()
+{	
+	EXEC SQL CONNECT TO "201701212@10.100.71.21" USER "201701212" USING "Mohit9909312426";
+	EXEC SQL WHENEVER SQLERROR SQLPRINT;
+	EXEC SQL WHENEVER SQLWARNING SQLPRINT;	
+	EXEC SQL set search_path to Online_streaming_site;
+	
+	int close=0;
+	while(close == 0)
+	{
+		printf("1) To Insert in User\n");
+		printf("2) To Delete from User\n");
+		printf("3) To Update User\n");
+		printf("4) To run query\n");
+		int x;
+		scanf("%d",&x);
+		if(x == 1)
+		{
+			exeInsert();
+		}
+		else if(x == 2)
+		{
+			exeDelete();
+		}
+		else if(x == 3)
+		{
+			exeUpdate();
+		}
+		else if(x == 4)
+		{
+			printf("1) To Know after the input date which channel has published THE MOST videos\n");
+			printf("2) To Know the most viewed video of a paticular input year\n");
+			printf("3) To Know which channel has most total likes\n");
+			printf("4) To Know which user has seen all the videos of input channel\n");
+			int p;
+			scanf("%d",&p);
+			if(p == 1)
+			{
+				query1();
+			}
+			else if(p == 2)
+			{
+				query2();
+			}
+			else if(p == 3)
+			{
+				query3();
+			}
+			else if(p == 4)
+			{
+				query4();
+			}
+		}
+		else
+			exit(0);
+		printf("Enter 1 to exit the program and 0 to continue\n");
+		scanf("%d",&close);
+	}
+	
+
+	return 0;
+}

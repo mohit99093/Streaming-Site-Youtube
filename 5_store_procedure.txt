@@ -1,0 +1,237 @@
+1) /*********************   Store procedure for number of views of given type and given range  ****************************/
+
+CREATE OR REPLACE FUNCTION "Online_streaming_site".NO_OF_VIEWS_OF_TYPE(V_TYPE character varying,s date,e date)
+RETURNS TABLE(
+	TYPE_OF_VIDEO character varying,
+	NO_OF_TIMES_WATCH BIGINT
+)
+LANGUAGE 'plpgsql'
+AS $BODY$
+
+DECLARE
+	R RECORD;
+	QUERY TEXT;
+	T_1 int :=0 ;
+	T_2 int :=0;
+	T_3 int :=0;
+	T_4 int :=0;
+BEGIN 
+
+	QUERY:='select * from "Online_streaming_site"."Watches" natural join  "Online_streaming_site"."Video" ';
+	FOR R IN EXECUTE QUERY  
+	LOOP 
+		IF(R."Educational"=true and R."Date">=s and R."Date"<=e)THEN
+		T_1 = T_1 + 1;
+		ELSIF(R."News" and R."Date">=s and R."Date"<=e)THEN
+		T_2 = T_2 + 1;
+		ELSIF(R."Documentary" and R."Date">=s and R."Date"<=e)THEN
+		T_3 = T_3 + 1;
+		ELSIF(R."Entertainment" and R."Date">=s and R."Date"<=e)THEN
+		T_4 = T_4 + 1;
+		END IF;
+	END LOOP;
+	
+	if(V_TYPE='Educational')then
+	TYPE_OF_VIDEO:= 'Educational';
+	NO_OF_TIMES_WATCH := T_1;
+	RETURN NEXT;
+	elsif(V_TYPE='News')then
+	TYPE_OF_VIDEO := 'News';
+	NO_OF_TIMES_WATCH := T_2;
+	RETURN NEXT;
+	elsif(V_TYPE='Documentary')then
+	TYPE_OF_VIDEO := 'Documentary';
+	NO_OF_TIMES_WATCH := T_3;
+	RETURN NEXT;
+	elsif(V_TYPE='Entertainment')then
+	TYPE_OF_VIDEO = 'Entertainment';
+	NO_OF_TIMES_WATCH := T_4;
+	RETURN NEXT;
+	end if;
+	
+END;
+$BODY$
+
+		
+			
+2) /*************************  No of channel of given user *****************************/
+
+CREATE OR REPLACE FUNCTION "Online_streaming_site".NO_OF_CHANNEL_OF_USER(U character varying)
+RETURNS TABLE(
+	NO_CHANNEL BIGINT
+)
+LANGUAGE 'plpgsql'
+AS $BODY$
+
+DECLARE
+	nam character varying;
+	co bigint:=0; 
+	query text;	
+	r record;
+begin
+	query := 'select b."User_Name",count(*) AS c from "Online_streaming_site"."Channel" as b group by b."User_Name" ';
+	for r in execute query
+	loop
+		if(r."User_Name"=U )then
+		NO_CHANNEL:= r."c";
+		return next;
+		end if;
+	end loop;	
+end;
+$BODY$
+
+3) /************************* Ad and country wise count of views ******************/
+
+CREATE OR REPLACE FUNCTION "Online_streaming_site".AD_AND_COUNTRY()
+RETURNS TABLE(
+	AD_ID BIGINT,
+	COUNTRY character varying,
+	NO_OF_VIEWS BIGINT
+)
+LANGUAGE 'plpgsql'
+AS $BODY$
+
+DECLARE
+	nam character varying;
+	co bigint:=0; 
+	query text;	
+	r record;
+begin
+	query := 'select "Add_Id","country",count(*) AS c  from "Online_streaming_site"."Advertisement"  natural join "Online_streaming_site"."Add_Played_On"  group by "Add_Id" , "country" order by "country"';
+	for r in execute query
+	loop
+		AD_ID:= r."Add_Id";
+		COUNTRY:= r."country";
+		NO_OF_VIEWS:= r."c";
+		return next;
+		
+	end loop;	
+end;
+$BODY$
+		
+4)   /**************************** From given date, channel name that publish maximum number of video   ***********************************/
+
+CREATE OR REPLACE FUNCTION "Online_streaming_site".fun(
+	p1 date)
+    RETURNS SETOF holder 
+    LANGUAGE 'plpgsql'
+
+    COST 100
+    VOLATILE 
+    ROWS 1000
+AS $BODY$
+	declare r holder%rowtype;
+begin
+	for r in select b."channel_name",count(b."Video_Id") as c from "Online_streaming_site"."Video"  as b where b."Publish_Date" > p1 group by channel_name order by c desc limit 1 loop
+	return next r;
+	end loop;
+	 return;
+end
+
+$BODY$;
+
+
+			
+/********************************************************************/	
+/***********************  TRIGGERS **********************************/
+/********************************************************************/
+
+
+
+
+
+/**********TRIGGER FOR UPDATE NUMBER OF COMMENT IN VIEWS TABLE  ***************/
+
+CREATE OR REPLACE FUNCTION "Online_streaming_site".comment_update()
+    RETURNS trigger LANGUAGE 'plpgsql'  AS $BODY$
+begin
+	IF(TG_OP = 'INSERT') THEN
+	update "Online_streaming_site"."Video" set "No_comments" = "No_comments" + 1 where "Video_Id" = NEW."Video_Id";
+	ELSIF(TG_OP ='DELETE') THEN
+	update "Online_streaming_site"."Video" set "No_comments" = "No_comments" - 1 where "Video_Id" = old."Video_Id";
+	END IF;
+	return NEW;
+end
+$BODY$;
+
+CREATE TRIGGER insert
+    AFTER INSERT OR DELETE    ON "Online_streaming_site"."Comment"
+    FOR EACH ROW
+    EXECUTE PROCEDURE "Online_streaming_site".comment_update();
+
+
+
+/********************  TRIGGER FOR UPDATE NUMBER OF LIKE IN VIEWS TABLE  ********************/
+
+CREATE OR REPLACE FUNCTION "Online_streaming_site".like_update()
+    RETURNS trigger LANGUAGE 'plpgsql' AS $BODY$
+begin
+	IF(TG_OP = 'INSERT') THEN
+	update "Online_streaming_site"."Video" set "No_likes" = "No_likes" + 1 where "Video_Id" = NEW."Video_Id";
+	ELSIF(TG_OP ='DELETE') THEN
+	update "Online_streaming_site"."Video" set "No_likes" = "No_likes" - 1 where "Video_Id" = old."Video_Id";
+	END IF;
+	return NEW;
+end$BODY$;
+
+CREATE TRIGGER insert
+    AFTER INSERT OR DELETE ON "Online_streaming_site"."Like"
+    FOR EACH ROW
+EXECUTE PROCEDURE "Online_streaming_site".like_update();
+
+/**********************  TRIGGER FOR UPDATE NUMBER OF SUBSCRIBERS IN CHANNEL TABLE  ********************/
+
+CREATE FUNCTION "Online_streaming_site".subscribe_update()
+    RETURNS trigger
+    LANGUAGE 'plpgsql'
+
+AS $BODY$
+begin	
+	IF(TG_OP = 'INSERT') THEN
+	update "Online_streaming_site"."Channel" set "subscribers" = "subscribers" + 1 where "channel_name" = NEW."Channel_name";
+	ELSIF(TG_OP ='DELETE') THEN
+		update "Online_streaming_site"."Channel" set "subscribers" = "subscribers" - 1 where "channel_name" = old."Channel_name";
+		
+	END IF;
+	return NEW;
+end
+$BODY$;
+
+CREATE TRIGGER insert
+    AFTER INSERT OR DELETE
+    ON "Online_streaming_site"."Subscribe"
+    FOR EACH ROW
+    EXECUTE PROCEDURE "Online_streaming_site".subscribe_update();
+
+/*********************   TRIGGER FOR UPDATE NUMBER OF VIEWS IN VIDEO TABLE   ********************/
+
+CREATE FUNCTION "Online_streaming_site".view_update()
+    RETURNS trigger
+    LANGUAGE 'plpgsql'
+    
+AS $BODY$
+declare po "Online_streaming_site"."Video"."No_views"%type;
+begin
+	IF(TG_OP = 'INSERT') THEN
+	update "Online_streaming_site"."Video" set "No_views" = "No_views" + NEW."No_Of_Times_Watch" where "Video_Id" = NEW."Video_Id";
+	ELSIF(TG_OP ='DELETE') THEN
+		update "Online_streaming_site"."Video" set "No_views" = "No_views" - old."No_Of_Times_Watch" where "Video_Id" = old."Video_Id";
+	END IF;
+	return NEW;
+	
+end
+$BODY$;
+
+
+CREATE TRIGGER insert
+    AFTER INSERT OR DELETE
+    ON "Online_streaming_site"."Watches"
+    FOR EACH ROW
+    EXECUTE PROCEDURE "Online_streaming_site".view_update();
+
+
+
+
+
+
+

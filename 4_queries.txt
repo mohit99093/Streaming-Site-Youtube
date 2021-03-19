@@ -1,0 +1,137 @@
+1)Retrieve the channel which have the most likes(which is the total amount of likes
+on the videos of that channel).
+
+set search_path to Online_streaming_site;
+select count(b."Video_Id") as q ,b."channel_name" from (select * from "Online_streaming_site"."Like" natural join 
+"Online_streaming_site"."Video")  as b group by channel_name
+order by q desc limit 1
+
+
+2) Retrieve the users who have seen all the videos of a particular channel.
+
+set search_path to Online_streaming_site;
+
+select  q."User_name" from (select * from (select * from "Online_streaming_site"."Watches" natural join 
+"Online_streaming_site"."Video") as b where b."channel_name" = 'NationalGeographic') as q  
+
+except
+(
+select d."User_name" from (select r."User_name" , s."Video_Id" from (select q."Video_Id" , q."User_name"	from (select * from (select * from "Online_streaming_site"."Watches" natural join 
+"Online_streaming_site"."Video") as b where b."channel_name" = 'NationalGeographic') as q  ) as r cross join  
+ (select "Video_Id"  from "Online_streaming_site"."Channel" natural join 
+"Online_streaming_site"."Video" where  channel_name = 'NationalGeographic'  ) as s 
+
+except (select   q."User_name" ,q."Video_Id"	from (select * from (select * from "Online_streaming_site"."Watches" natural join 
+"Online_streaming_site"."Video") as b where b."channel_name" = 'NationalGeographic') as q) ) as d
+	)
+
+3) Retrieve the most probable video to appear advertisement.
+
+set search_path to Online_streaming_site;
+
+select D."Video_Id",D."col3"/D."col2"::float as pro from (select * from ((select  sum(b."No_Of_Times_Watch") as col2	from 
+	"Online_streaming_site"."Watches" as b where b."Add_Id" is not null) as e cross join
+(select  b."Video_Id", sum(b."No_Of_Times_Watch") as col3	from "Online_streaming_site"."Watches" as b 
+where b."Add_Id" is not null group by b."Video_Id")as f) as d) as D  order by pro desc 
+ 
+
+4) Retrieve the amount of money earned by each channel in descending order.
+
+ set search_path to Online_streaming_site;
+
+select * from
+((select x3."channel_name",x3."total_income" from
+(select (sum(x1."su" * x2."income")) as total_income,x1."channel_name" from 
+(select ch."channel_name",x."Add_Id",sum(x."su") as su from
+(select wa."Video_Id",wa."Add_Id",sum(wa."No_Of_Times_Watch") as su from "Online_streaming_site"."Watches" as wa where 
+ wa."Add_Id" is not null group by wa."Video_Id",wa."Add_Id") as x natural join "Online_streaming_site"."Video" as vi
+ natural join "Online_streaming_site"."Channel" as ch group by ch."channel_name", x."Add_Id") as x1
+ natural join
+ (select ((100-ad."Per_View_commission")/100::float * ad."cost_Per_View") as income,ad."Add_Id" from 
+ "Online_streaming_site"."Advertisement" as ad) as x2
+ group by x1."channel_name" ) as x3 where x3."channel_name" != 'YoutubeOfficial')
+ 
+ union
+
+(select x1."channel_name",(sum(x1."su" * x2."income")) as total_income from 
+(select ch."channel_name",x."Add_Id",sum(x."su") as su from
+(select wa."Video_Id",wa."Add_Id",sum(wa."No_Of_Times_Watch") as su from "Online_streaming_site"."Watches" as wa where 
+ wa."Add_Id" is not null group by wa."Video_Id",wa."Add_Id") as x natural join "Online_streaming_site"."Video" as vi
+ natural join "Online_streaming_site"."Channel" as ch where ch."channel_name" = 'YoutubeOfficial' 
+ group by ch."channel_name", x."Add_Id" ) as x1
+ natural join
+ (select (ad."cost_Per_View") as income,ad."Add_Id" from 
+ "Online_streaming_site"."Advertisement" as ad) as x2
+ group by x1."channel_name" ) ) as x4 order by x4."total_income" desc 
+
+ 5) Retrieve the most viewed video of all particular year.
+ 
+set search_path to Online_streaming_site;
+
+select x1."y",x1."Video_Id",x1."num" from 
+(select extract('year' from "Date") as y,wa."Video_Id",sum(wa."No_Of_Times_Watch") as num from 
+"Online_streaming_site"."Watches" as wa group by y,wa."Video_Id") as x1 
+join
+(select x2."y",max(num) as ma from 
+(select extract('year' from "Date") as y,wa."Video_Id",sum(wa."No_Of_Times_Watch") as num from 
+"Online_streaming_site"."Watches" as wa group by y,wa."Video_Id") as x2 group by x2."y") as x3
+on x1."num" = x3."ma"
+
+  
+
+6)  Retrieve year wise maximum earning user. 
+
+select x6."User_Name",x6."income",x6."y" as year from
+(select ch."User_Name",sum(x4."income") as income,x4."y"  from ((select vi."channel_name",x3."y",sum(x3."income") as income from (select x1."y",x1."Video_Id",sum(x1."num" * x2."income") as income from (select extract('year' from "Date") as y,wa."Video_Id",wa."Add_Id",sum(wa."No_Of_Times_Watch") as num from "Online_streaming_site"."Watches" as wa where wa."Add_Id" is not null group by y,wa."Video_Id",wa."Add_Id") as x1 natural join (select ((100-ad."Per_View_commission")/100::float * ad."cost_Per_View") as income,ad."Add_Id" from "Online_streaming_site"."Advertisement" as ad) as x2 group by x1."y",x1."Video_Id") as x3 natural join  "Online_streaming_site"."Video" as vi where vi."channel_name" != 'YoutubeOfficial' group by vi."channel_name",x3."y") union (select vi."channel_name",x3."y",sum(x3."income") from (select x1."y",x1."Video_Id",sum(x1."num" * x2."income") as income from (select extract('year' from "Date") as y,wa."Video_Id",wa."Add_Id",sum(wa."No_Of_Times_Watch") as num from "Online_streaming_site"."Watches" as wa where wa."Add_Id" is not null group by y,wa."Video_Id",wa."Add_Id") as x1 natural join (select (ad."cost_Per_View") as income,ad."Add_Id" from  "Online_streaming_site"."Advertisement" as ad) as x2 group by x1."y",x1."Video_Id") as x3 natural join  "Online_streaming_site"."Video" as vi where vi."channel_name" = 'YoutubeOfficial' group by vi."channel_name",x3."y")) as x4 natural join "Online_streaming_site"."Channel" as ch group by ch."User_Name",x4."y"
+) as x6
+ join 
+(select max(x5."income") as max_income,x5."y" from 
+(select ch."User_Name",sum(x4."income") as income,x4."y"  from ((select vi."channel_name",x3."y",sum(x3."income") as income from (select x1."y",x1."Video_Id",sum(x1."num" * x2."income") as income from (select extract('year' from "Date") as y,wa."Video_Id",wa."Add_Id",sum(wa."No_Of_Times_Watch") as num from "Online_streaming_site"."Watches" as wa where wa."Add_Id" is not null group by y,wa."Video_Id",wa."Add_Id") as x1 natural join (select ((100-ad."Per_View_commission")/100::float * ad."cost_Per_View") as income,ad."Add_Id" from "Online_streaming_site"."Advertisement" as ad) as x2 group by x1."y",x1."Video_Id") as x3 natural join  "Online_streaming_site"."Video" as vi where vi."channel_name" != 'YoutubeOfficial' group by vi."channel_name",x3."y") union (select vi."channel_name",x3."y",sum(x3."income") from (select x1."y",x1."Video_Id",sum(x1."num" * x2."income") as income from (select extract('year' from "Date") as y,wa."Video_Id",wa."Add_Id",sum(wa."No_Of_Times_Watch") as num from "Online_streaming_site"."Watches" as wa where wa."Add_Id" is not null group by y,wa."Video_Id",wa."Add_Id") as x1 natural join (select (ad."cost_Per_View") as income,ad."Add_Id" from  "Online_streaming_site"."Advertisement" as ad) as x2 group by x1."y",x1."Video_Id") as x3 natural join  "Online_streaming_site"."Video" as vi where vi."channel_name" = 'YoutubeOfficial' group by vi."channel_name",x3."y")) as x4 natural join "Online_streaming_site"."Channel" as ch group by ch."User_Name",x4."y"
+) as x5 group by x5."y") as x7 
+on  x6."income" = x7."max_income"
+
+
+7)   Retrieve the channel which has published maximum videos after mm/dd/yyyy.
+set search_path to Online_streaming_site;
+
+select b."channel_name",count(b."Video_Id") as c from "Online_streaming_site"."Video"  as b where b."Publish_Date" > '2019-11-10' group by channel_name order by c desc limit 1 ;
+
+
+8)  user name wise count of all type of video that watched
+
+set search_path to Online_streaming_site;
+select b."User_name",sum(b."Educational"::int)as Educational,sum(b."News"::int)as News, sum(b."Documentary"::int)as documentary,sum(b."Entertainment"::int)as Entertainment from(select *   from "Online_streaming_site"."Watches" natural join "Online_streaming_site"."Video") as b group by b."User_name" 
+
+9) count of ad and country wise played an ad 
+
+set search_path to Online_streaming_site;
+select "Add_Id","country",count(*) AS c  from "Online_streaming_site"."Advertisement"  natural join "Online_streaming_site"."Add_Played_On"  group by "Add_Id" , "country" order by "country"
+
+
+10)  From given date, channel name that publish maximum number of video
+
+set search_path to Online_streaming_site;
+select b."channel_name",count(b."Video_Id") as c from "Online_streaming_site"."Video"  as b where b."Publish_Date" > p1 group by channel_name order by c desc limit 1 loop
+
+11)   Year Wise Earning Of each channel:-
+
+(select vi."channel_name",x3."y",sum(x3."income") from
+(select x1."y",x1."Video_Id",sum(x1."num" * x2."income") as income from 
+(select extract('year' from "Date") as y,wa."Video_Id",wa."Add_Id",sum(wa."No_Of_Times_Watch") as num from 
+"Online_streaming_site"."Watches" as wa where wa."Add_Id" is not null group by y,wa."Video_Id",wa."Add_Id") as x1
+natural join
+(select ((100-ad."Per_View_commission")/100::float * ad."cost_Per_View") as income,ad."Add_Id" from 
+ "Online_streaming_site"."Advertisement" as ad) as x2 group by x1."y",x1."Video_Id") as x3 natural join 
+ "Online_streaming_site"."Video" as vi
+ where vi."channel_name" != 'YoutubeOfficial' group by vi."channel_name",x3."y") 
+ union
+ (select vi."channel_name",x3."y",sum(x3."income") from
+(select x1."y",x1."Video_Id",sum(x1."num" * x2."income") as income from 
+(select extract('year' from "Date") as y,wa."Video_Id",wa."Add_Id",sum(wa."No_Of_Times_Watch") as num from 
+"Online_streaming_site"."Watches" as wa where wa."Add_Id" is not null group by y,wa."Video_Id",wa."Add_Id") as x1
+natural join
+(select (ad."cost_Per_View") as income,ad."Add_Id" from 
+ "Online_streaming_site"."Advertisement" as ad) as x2 group by x1."y",x1."Video_Id") as x3 natural join 
+ "Online_streaming_site"."Video" as vi
+ where vi."channel_name" = 'YoutubeOfficial' group by vi."channel_name",x3."y") 
+	

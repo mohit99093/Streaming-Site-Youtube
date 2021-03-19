@@ -1,0 +1,162 @@
+CREATE SCHEMA "Online_streaming_site";
+SET SEARCH_PATH TO “Online_streaming_site”;
+
+
+
+CREATE TABLE "Online_streaming_site"."Add_Played_On"
+(
+    "Add_Id" bigint NOT NULL,
+    "Video_Id" bigint NOT NULL,
+    PRIMARY KEY ("Add_Id", "Video_Id"),
+    FOREIGN KEY ("Add_Id")  REFERENCES "Online_streaming_site"."Advertisement" ("Add_Id") ,
+    FOREIGN KEY ("Video_Id")  REFERENCES "Online_streaming_site"."Video" ("Video_Id")
+   );
+
+
+
+
+CREATE TABLE "Online_streaming_site"."Advertisement"
+(
+    "Add_Id" integer NOT NULL,
+    "Per_View_commission" bigint NOT NULL,
+    "cost_Per_View" double precision NOT NULL, 
+  country character varying NOT NULL,
+   length bigint NOT NULL,
+  PRIMARY KEY ("Add_Id")  
+);
+
+
+
+CREATE TABLE "Online_streaming_site"."Channel"
+(
+    "User_Name" character varying NOT NULL,
+    channel_name character varying NOT NULL,
+    creation_date date NOT NULL,
+    subscribers bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (channel_name),
+   FOREIGN KEY ("User_Name") REFERENCES "Online_streaming_site"."User_details" ("User_Name")
+);
+CREATE TABLE "Online_streaming_site"."Comment"
+(
+    "User_Name" character varying NOT NULL,
+    "Video_Id" bigint NOT NULL,
+    date date NOT NULL,
+    c_id bigint
+ PRIMARY KEY (c_id),
+FOREIGN KEY ("User_Name")  REFERENCES "Online_streaming_site"."User_details" ("User_Name") 
+FOREIGN KEY ("Video_Id")   REFERENCES "Online_streaming_site"."Video" ("Video_Id")
+);
+
+
+
+CREATE TABLE "Online_streaming_site"."History"
+(
+    "history_Id" bigint NOT NULL,
+    "User_name" character varying NOT NULL,
+    "Membership_Price" bigint NOT NULL,
+    "Start_date" date NOT NULL,
+    "End_date" date NOT NULL,
+    PRIMARY KEY ("history_Id"),
+    FOREIGN KEY ("User_name")       REFERENCES "Online_streaming_site"."User_details" ("User_Name")
+);
+
+
+
+CREATE TABLE "Online_streaming_site"."Like"
+(
+    "User_name" character varying NOT NULL,
+    "Video_Id" bigint NOT NULL,
+    "Date" date NOT NULL,
+    PRIMARY KEY ("User_name", "Video_Id"),
+    FOREIGN KEY ("User_name")  REFERENCES "Online_streaming_site"."User_details" ("User_Name") ,
+     FOREIGN KEY ("Video_Id")    REFERENCES "Online_streaming_site"."Video" ("Video_Id")
+  );
+
+
+
+
+CREATE TABLE "Online_streaming_site"."Movie_Purchased"
+(
+    "User_name" character varying NOT NULL,
+    "Movie_Id" bigint NOT NULL,
+     PRIMARY KEY ("User_name", "Movie_Id"),
+    FOREIGN KEY ("User_name")  REFERENCES "Online_streaming_site"."User_details" ("User_Name"), 
+    FOREIGN KEY ("Movie_Id")   REFERENCES "Online_streaming_site"."Movies" ("Movie_ID")
+ );
+
+
+
+CREATE TABLE "Online_streaming_site"."Movies"
+(
+    "Title" character varying  NOT NULL,
+    "Movie_ID" bigint  NOT NULL,
+    rating character varying ,
+    "Max_quality" character varying  NOT NULL,
+    "Trailer_Id" bigint NOT NULL,
+    "Price" bigint NOT NULL,
+    length bigint NOT NULL,
+    no_of_times_purchsed bigint NOT NULL DEFAULT 0,
+   PRIMARY KEY ("Movie_ID"),
+    FOREIGN KEY ("Trailer_Id")  REFERENCES "Online_streaming_site"."Video" ("Video_Id")
+);
+
+
+
+CREATE TABLE "Online_streaming_site"."Subscribe"
+(
+    "User_name" character varying NOT NULL,
+    "Channel_name" character varying NOT NULL,
+    "Date" date NOT NULL,
+   PRIMARY KEY ("User_name", "Channel_name"),
+   FOREIGN KEY ("Channel_name")   REFERENCES "Online_streaming_site"."Channel" ("channel_name")
+   FOREIGN KEY ("User_name")  REFERENCES "Online_streaming_site"."User_details" ("User_Name")
+ );
+
+
+
+
+CREATE TABLE "Online_streaming_site"."User_details"
+(
+    "User_Name" character varying NOT NULL,
+    "Password" character varying ,
+    "DateOfSignUp" date,
+    "Country" character varying COLLATE pg_catalog."default",
+    "Is_Primum" boolean,
+    PRIMARY KEY ("User_Name")
+);
+
+
+CREATE TABLE "Online_streaming_site"."Video"
+(
+    "Video_Id" bigint NOT NULL,
+    "Is_premium" boolean NOT NULL,
+    "Publish_Date" date NOT NULL,
+    "Length" bigint NOT NULL,
+    channel_name character varying NOT NULL,
+    "Educational" boolean NOT NULL,
+    "News" boolean NOT NULL,
+    "Doucumentary" boolean NOT NULL,
+    "Entertainment" boolean NOT NULL,
+    "No_likes" bigint NOT NULL DEFAULT 0,
+    "No_comments" bigint NOT NULL DEFAULT 0,
+    "No_views" bigint NOT NULL DEFAULT 0,
+     PRIMARY KEY ("Video_Id")
+     FOREIGN KEY (channel_name)  CONSTRAINT "Video_channel_name_fkey" FOREIGN KEY ("channel_name")
+)
+
+
+
+CREATE TABLE "Online_streaming_site"."Watches"
+(
+    "User_name" character varying NOT NULL,
+    "Video_Id" bigint NOT NULL,
+    "Add_Id" bigint,
+    "Date" date NOT NULL,
+    "No_Of_Times_Watch" bigint NOT NULL,
+   PRIMARY KEY ("User_name", "Video_Id", "Date"),
+   FOREIGN KEY ("User_name")  REFERENCES "Online_streaming_site"."User_details" ("User_Name"),
+   FOREIGN KEY ("Video_Id")  REFERENCES "Online_streaming_site"."Video" ("Video_Id")
+   );
+
+
+
